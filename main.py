@@ -8,14 +8,8 @@ import pygetwindow as gw
 import imutils
 import time
 from threading import Thread
-import shlex
-import subprocess
-from dateutil.relativedelta import relativedelta  # Install it via: pip install python-dateutil
 
-try:
-    os.remove("output_video.mp4")
-except:
-    pass
+from dateutil.relativedelta import relativedelta  # Install it via: pip install python-dateutil
 
 drawing = False
 global x1, y1, x2, y2, num, h, w, windowRegion, screen_img
