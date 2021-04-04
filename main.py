@@ -1,4 +1,7 @@
+import re
+
 import pytesseract
+from PIL import Image
 from PyQt5 import QtCore, QtGui, QtWidgets  # pip install pyqt5
 import os
 import pyautogui  # pip install pyautogui
@@ -8,11 +11,12 @@ import pygetwindow as gw
 import imutils
 import time
 from threading import Thread
+from nltk import sent_tokenize
 
 from dateutil.relativedelta import relativedelta  # Install it via: pip install python-dateutil
 
 drawing = False
-global x1, y1, x2, y2, num, h, w, windowRegion, screen_img
+global x1, y1, x2, y2, num, h, w, windowRegion
 x1, y1, x2, y2, h, w = 0, 0, 0, 0, 0, 0
 windowRegion = 0
 num = 0
@@ -155,22 +159,42 @@ class Ui_MainWindow(object):
         global windowRegion
         self.st = time.time()
 
+
         while (True):
             if self.useCam == True:
                 windowRegion = (0, 0, self.W, self.H)
             frame = np.array(pyautogui.screenshot(region=windowRegion), dtype="uint8")
             frame = imutils.resize(frame, width=480)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            #blur = cv2.GaussianBlur(frame, (3, 3), 0)
+            thresh = 255 - cv2.threshold(frame, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+
+
+
+            # Morph open to remove noise and invert image
+            #kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            #opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+           # new_inverted_image = 255 - opening
+
+
+
+            #thresh = cv2.GaussianBlur(thresh, (3, 3), 0)
+            image_new = Image.fromarray(thresh)
+            self.imagetotext(thresh)
+
+
             cv2.imshow("Preview", frame)
             rt = relativedelta(seconds=time.time() - self.st)
             st = ('{:02d}:{:02d}:{:02d}'.format(int(rt.hours), int(rt.minutes), int(rt.seconds)))
             self.pushButton.setText('Stop Recording: ' + st)
-            self.imagetotext(pyautogui.screenshot(region=windowRegion))
+
             if cv2.waitKey(1) == 27:
                 w = gw.getWindowsWithTitle('Windows PowerShell')[0]
                 w.close()
                 cv2.destroyAllWindows()
                 break
+
+
 
     def takeSnapNow(self):
 
@@ -203,15 +227,30 @@ class Ui_MainWindow(object):
         self.pushButton.setShortcut(_translate("MainWindow", "Ctrl+r"))
         self.actionNew.setText(_translate("MainWindow", "New"))
 
+    def cal_stderr(self, img, imgo=None):
+        if imgo is None:
+            return (img ** 2).sum() / img.size * 100
+        else:
+            return ((img - imgo) ** 2).sum() / img.size * 100
+
     def imagetotext(self, directory):
 
         pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # Your tesseract file directory.
-        text = pytesseract.image_to_string(directory, lang='eng')
-        print(text)
+       # custom_config = r'-l eng --oem 3 --psm 6'
+        text = pytesseract.image_to_string(directory,  lang="eng", config=" --psm 6")
+        text2 = sent_tokenize(text)
+
+        for sentence in text2:
+            if len(sentence) > 0:
+                new_string = re.sub(r"^[a-zA-Z0-9,/< ]+$", "", sentence)
+                print(new_string)
+
 
 
 if __name__ == "__main__":
     import sys
+
+
 
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
